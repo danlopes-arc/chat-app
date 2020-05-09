@@ -13,7 +13,7 @@ app.get("/", (req, res) => {
     res.sendFile(__dirname + "/static/index.html")
 })
 
-app.get("/static/:file*", (req, res) => {
+app.get("/static/*", (req, res) => {
     const path = req.path
     const file = __dirname + path
     if (!fs.existsSync(file)) {
