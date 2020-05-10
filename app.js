@@ -1,3 +1,21 @@
+class User {
+    constructor(id) {
+        this.id = id
+    }
+}
+class Message {
+    constructor(user, text, datetime) {
+        this.user = user
+        this.text = text
+        if (datetime) {
+            this.datetime = datetime
+        }
+        else {
+            this.datetime = Date()
+        }
+    }
+}
+
 const fs = require("fs")
 const app = require("express")()
 const http = require("http").createServer(app)
@@ -9,8 +27,15 @@ if (!host) {
 }
 const port = 8080
 
+const users = []
+const messages = []
+
+app.set("views", "./views")
+app.set("view engine", "pug")
+
 app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/static/index.html")
+    // res.sendFile(__dirname + "/static/index.html")
+    res.render("index", {title: "Opa", message: "Hello There!"})
 })
 
 app.get("/static/*", (req, res) => {
@@ -24,15 +49,26 @@ app.get("/static/*", (req, res) => {
 })
 
 io.on("connection", socket => {
-    console.log("a user connected")
+    const user = new User(users.length)
+    users.push(user)
+    console.log(`Connected: ${user.id}`)
+
+    socket.emit("connection accepted", user)
+
     socket.on("disconnect", () => {
-        console.log("a user disconnected")
+        console.log(`Disconnected: ${user.id}`)
     })
-    socket.on("chat message", msg => {
-        console.log("user message: " + msg)
-        socket.broadcast.emit("sent others", msg)
-        io.emit("sent all", msg)
-        socket.emit("sent mine", msg)
+
+    socket.on("client message", msg => {
+        console.log(`From ${msg.user.id}: ${msg.text}`)
+        io.emit("server message", msg)
+        // socket.emit("sent mine", msg)
+    })
+
+    socket.on("client typing", userPayload => {
+        console.log(`${userPayload.id} is typing`)
+        socket.broadcast.emit("server typing", userPayload)
+        // socket.emit("sent mine", msg)
     })
 })
 

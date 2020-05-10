@@ -1,0 +1,25 @@
+mixin typing(name)
+    p#typing #{name} is typing
+
+doctype html
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1.0")
+
+        title= title ? title : "Chat App"
+        link(rel="shortcut icon", href="/static/favicon.ico", type="image/x-icon")
+        link(rel="stylesheet", href="/static/style.css")
+    body
+        h1
+            span Connected as#{" "}
+            span#header-user-id ...
+        p#activity-bar 
+            span Activity:#{" "}
+            span#activity-feed
+        ul#messages
+            form#form
+                input#message-input(type="text", autocomplete="off", disabled, placeholder="Connecting...")
+                button#btn-submit(disabled) send
+        script(src="/socket.io/socket.io.js")
+        script(src="/static/index.js")

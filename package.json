@@ -4,6 +4,7 @@
     "description": "testing socket.io alone",
     "dependencies": {
         "express": "^4.17.1",
+        "pug": "^2.0.4",
         "socket.io": "^2.3.0"
     }
 }
