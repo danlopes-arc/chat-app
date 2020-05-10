@@ -3,41 +3,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const socket = io()
     let user = null
     let checkingTyping = false
-
-    // const typingAnnouncer = {
-    //     busy: false,
-    //     next: null,
-    //     announce(user) {
-    //         function setFeed(user) {
-    //             byId("activity-feed").innerText = `user#${user.id} is typing`
-    //         }
-    //         function clearFeed() {
-    //             byId("activity-feed").innerText = ""
-    //         }
-    //         if (this.busy) {
-    //             this.next = user
-    //             return
-    //         }
-    //         setFeed(user)
-    //         this.busy = true
-    //         function checkNext(announcer) {
-    //             if (announcer.next === null) {
-    //                 clearFeed()
-    //                 announcer.busy = false
-    //                 return
-    //             }
-    //             setFeed(announcer.next)
-    //             announcer.next = null
-    //             setTimeout(() => checkNext(announcer), 2000)
-    //         }
-    //         setTimeout(() => checkNext(this), 2000)
-
-    //     }
-    // }
+    
     const typingAnnouncer = {
         busy: false,
         next: new Map(), //{user: keep}
-        announce(user) {
+        requestAnnounce(user) {
             function setFeed(user) {
                 byId("activity-feed").innerText = `user#${user.id} is typing`
             }
@@ -118,13 +88,15 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.on("server message", msg => {
         const li = document.createElement("li")
         const strong = document.createElement("strong")
+        const datetime = new Date(msg.datetime)
+        const datetimeString = `${datetime.getHours().toString().padStart(2, 0)}:${datetime.getMinutes().toString().padStart(2, 0)}:${datetime.getSeconds().toString().padStart(2, 0)}`
         strong.innerText = `user#${msg.user.id}:`
-        li.innerHTML = `${strong.outerHTML} ${msg.text}`
+        li.innerHTML = `${datetimeString} ${strong.outerHTML} ${msg.text}`
         byId("messages").append(li)
     })
 
     socket.on("server typing", userPayload => {
         console.log("server typing")
-        typingAnnouncer.announce(userPayload)
+        typingAnnouncer.requestAnnounce(userPayload)
     })
 })

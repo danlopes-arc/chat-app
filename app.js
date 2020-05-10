@@ -61,7 +61,9 @@ io.on("connection", socket => {
 
     socket.on("client message", msg => {
         console.log(`From ${msg.user.id}: ${msg.text}`)
-        io.emit("server message", msg)
+        const message = new Message(user, msg.text, Date.now())
+        messages.push(message)
+        io.emit("server message", message)
         // socket.emit("sent mine", msg)
     })
 
