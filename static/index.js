@@ -4,9 +4,39 @@ document.addEventListener("DOMContentLoaded", () => {
     let user = null
     let checkingTyping = false
 
+    // const typingAnnouncer = {
+    //     busy: false,
+    //     next: null,
+    //     announce(user) {
+    //         function setFeed(user) {
+    //             byId("activity-feed").innerText = `user#${user.id} is typing`
+    //         }
+    //         function clearFeed() {
+    //             byId("activity-feed").innerText = ""
+    //         }
+    //         if (this.busy) {
+    //             this.next = user
+    //             return
+    //         }
+    //         setFeed(user)
+    //         this.busy = true
+    //         function checkNext(announcer) {
+    //             if (announcer.next === null) {
+    //                 clearFeed()
+    //                 announcer.busy = false
+    //                 return
+    //             }
+    //             setFeed(announcer.next)
+    //             announcer.next = null
+    //             setTimeout(() => checkNext(announcer), 2000)
+    //         }
+    //         setTimeout(() => checkNext(this), 2000)
+
+    //     }
+    // }
     const typingAnnouncer = {
         busy: false,
-        next: null,
+        next: new Map(), //{user: keep}
         announce(user) {
             function setFeed(user) {
                 byId("activity-feed").innerText = `user#${user.id} is typing`
@@ -15,19 +45,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 byId("activity-feed").innerText = ""
             }
             if (this.busy) {
-                this.next = user
+                let found = false
+                this.next.forEach((keep, userCheck, map) => {
+                    if (!found && userCheck.id === user.id) {
+                        map.set(userCheck, true)
+                        found = true
+                    }
+                });
+                if (!found) {
+                    this.next.set(user, true)
+                }
                 return
             }
             setFeed(user)
             this.busy = true
             function checkNext(announcer) {
-                if (announcer.next === null) {
+                if (announcer.next.size === 0) {
                     clearFeed()
                     announcer.busy = false
                     return
                 }
-                setFeed(announcer.next)
-                announcer.next = null
+                announcer.next.forEach((keep, userCheck, map) => {
+                    if (keep) {
+                        map.set(userCheck, false)
+                    } else {
+                        map.delete(userCheck)
+                    }
+                })
+                const firstUser = announcer.next.keys().next().value
+                setFeed(firstUser)
+                announcer.next.delete(firstUser)
                 setTimeout(() => checkNext(announcer), 2000)
             }
             setTimeout(() => checkNext(this), 2000)
