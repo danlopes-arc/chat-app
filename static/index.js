@@ -7,9 +7,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const typingAnnouncer = {
         busy: false,
         next: new Map(), //{user: keep}
+        stopped: false,
+        stop() {
+            this.stopped = true
+            this.next.clear()
+            this.busy = false
+        },
+        start() {
+            this.stopped = false
+        },
         requestAnnounce(user) {
+            if (this.stopped) {
+                return
+            }
             function setFeed(user) {
-                byId("activity-feed").innerText = `user#${user.id} is typing`
+                byId("activity-feed").innerText = `${user.username} is typing`
             }
             function clearFeed() {
                 byId("activity-feed").innerText = ""
@@ -78,25 +90,141 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     socket.on("connection accepted", userPayload => {
-        user = userPayload
+        // user = userPayload
+        requireLogin()
+    })
+
+    function messagesToNodes(...msgs) {
+        const elms = []
+        msgs.forEach(msg => {
+            const li = document.createElement("li")
+            const strong = document.createElement("strong")
+            const datetime = new Date(msg.datetime)
+            const datetimeString = `${datetime.getHours().toString().padStart(2, 0)}:${datetime.getMinutes().toString().padStart(2, 0)}:${datetime.getSeconds().toString().padStart(2, 0)}`
+            strong.innerText = msg.user.username
+            li.innerHTML = `${datetimeString} ${strong.outerHTML} ${msg.text}`
+            elms.push(li)
+        })
+        return elms
+    }
+    function prependMessages(...msgs) {
+        const nodes = messagesToNodes(...msgs)
+        byId("messages").prepend(...nodes)
+    }
+    function appendMessages(...msgs) {
+        const nodes = messagesToNodes(...msgs)
+        byId("messages").append(...nodes)
+    }
+
+    socket.on("server message", msg => appendMessages(msg))
+
+    socket.on("server typing", userPayload => {
+        typingAnnouncer.requestAnnounce(userPayload)
+    })
+
+    socket.on("disconnect", (reason) => {
+        disableMain()
+    })
+
+    function disableMain() {
+        typingAnnouncer.stop()
+        byId("message-input").setAttribute("disabled", "disabled")
+        byId("message-input").setAttribute("placeholder", "Connecting...")
+        byId("btn-submit").setAttribute("disabled", "disabled")
+        byId("connection-text").innerText = "Disconnected"
+        byId("header-user-id").innerText = ""
+    }
+    function loadMain() {
+        typingAnnouncer.start()
         byId("message-input").removeAttribute("disabled")
         byId("message-input").setAttribute("placeholder", "Type a message")
         byId("btn-submit").removeAttribute("disabled")
-        byId("header-user-id").innerText = `user#${user.id}`
-    })
+        byId("connection-text").innerText = "Connected as "
+        byId("header-user-id").innerText = user.username
 
-    socket.on("server message", msg => {
-        const li = document.createElement("li")
-        const strong = document.createElement("strong")
-        const datetime = new Date(msg.datetime)
-        const datetimeString = `${datetime.getHours().toString().padStart(2, 0)}:${datetime.getMinutes().toString().padStart(2, 0)}:${datetime.getSeconds().toString().padStart(2, 0)}`
-        strong.innerText = `user#${msg.user.id}:`
-        li.innerHTML = `${datetimeString} ${strong.outerHTML} ${msg.text}`
-        byId("messages").append(li)
-    })
+        byId("messages").querySelectorAll("li").forEach(el => el.remove())
+        const request = new XMLHttpRequest()
+            request.open("GET", `/messages`)
+            request.onload = () => {
+                if (request.status !== 200) {
+                    return
+                }
+                const messages = JSON.parse(request.response)
+                console.log(messages)
+                appendMessages(...messages)
+            }
+            request.send()
 
-    socket.on("server typing", userPayload => {
-        console.log("server typing")
-        typingAnnouncer.requestAnnounce(userPayload)
-    })
+    }
+
+    function loadLogin() {
+        if (byId("login-form")) return
+        disableMain()
+        const form = document.createElement("form")
+        form.id = "login-form"
+
+        const inputUsername = document.createElement("input")
+        inputUsername.id = "login-username"
+        inputUsername.type = "text"
+        inputUsername.autocomplete = "off"
+        inputUsername.placeholder = "Username"
+
+        const inputPassword = document.createElement("input")
+        inputPassword.id = "login-password"
+        inputPassword.type = "password"
+        inputPassword.placeholder = "Password"
+
+        const button = document.createElement("button")
+        button.id = "login-submit"
+        button.innerText = "Login"
+
+        form.append(inputUsername, inputPassword, button)
+
+        document.body.prepend(form)
+
+        form.onsubmit = () => {
+            const request = new XMLHttpRequest()
+            request.open("POST", `/users`)
+            request.onload = () => {
+                if (request.status !== 200) {
+                    return
+                }
+                const payload = JSON.parse(request.response)
+                user = {
+                    id: payload.id,
+                    username: payload.username
+                }
+                window.localStorage.setItem("userId", user.id)
+                form.remove()
+                loadMain()
+            }
+            const data = new FormData()
+            data.set("username", inputUsername.value)
+            data.set("password", inputPassword.value)
+            request.send(data)
+            return false
+        }
+    }
+
+    function requireLogin() {
+        let userId = localStorage.getItem("userId")
+        if (userId === null) {
+            loadLogin()
+            return
+        }
+        else {
+            const request = new XMLHttpRequest()
+            request.open("GET", `/users/${userId}`)
+            request.onload = () => {
+                if (request.status !== 200) {
+                    loadLogin()
+                    return
+                }
+                user = JSON.parse(request.response)
+                localStorage.setItem("userId", user.id)
+                loadMain()
+            }
+            request.send()
+        }
+    }
 })
