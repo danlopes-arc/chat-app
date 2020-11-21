@@ -1,2 +1,2 @@
 # chat-app
-Based on node
+Messaging app using Node, Socket.io, and Pug
